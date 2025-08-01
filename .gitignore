@@ -1,0 +1,4 @@
+animes.json
+.env
+cmd/anime/main
+cmd/anime/tmp/main
