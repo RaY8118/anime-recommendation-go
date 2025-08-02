@@ -2,3 +2,5 @@ animes.json
 .env
 cmd/anime/main
 cmd/anime/tmp/main
+post.md
+explanation.md

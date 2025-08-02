@@ -99,3 +99,12 @@ type GraphQLRequest struct {
 	Query     string                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
 }
+
+type OllamaRequest struct {
+	Model  string `json:"model"`
+	Prompt string `json:"prompt"`
+}
+
+type OllamaResponse struct {
+	Embeddings []float32 `json:"embedding"`
+}

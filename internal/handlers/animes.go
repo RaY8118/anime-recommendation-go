@@ -4,9 +4,11 @@ import (
 	"anime/internal/database"
 	"anime/internal/embeddings"
 	"anime/internal/models"
+	"anime/internal/service"
 	"anime/internal/utils"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sort"
@@ -164,15 +166,16 @@ func NewRecommendHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queryEmbedding, err := embeddings.GenerateEmbedding(query)
+	queryEmbedding, err := embeddings.GenerateEmbeddingsOllama(query)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to generate embedding", http.StatusInternalServerError)
 		return
 	}
 
 	vectorSearchStage := bson.D{
 		{Key: "$vectorSearch", Value: bson.D{
-			{Key: "index", Value: "embeddings_vector_index"},
+			{Key: "index", Value: "new_embeddings_vector_index"},
 			{Key: "path", Value: "embedding"},
 			{Key: "queryVector", Value: queryEmbedding},
 			{Key: "numCandidates", Value: 100},
@@ -198,8 +201,9 @@ func NewRecommendHandler(w http.ResponseWriter, r *http.Request) {
 			{Key: "score", Value: bson.D{{Key: "$meta", Value: "vectorSearchScore"}}},
 		}}}
 
-	cursor, err := database.AnimeCollection.Aggregate(context.Background(), mongo.Pipeline{vectorSearchStage, projectStage})
+	cursor, err := database.NewAnimeCollection.Aggregate(context.Background(), mongo.Pipeline{vectorSearchStage, projectStage})
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to fetch anime", http.StatusInternalServerError)
 		return
 	}
@@ -317,7 +321,55 @@ func InsertAnimeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count, err := database.InsertAnimes(page, perPage)
+	count, err := service.InsertAnimes(page, perPage)
+	if err != nil {
+		http.Error(w, "Failed to insert animes", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{"status": "success", "message": "Animes inserted successfully", "count": count})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
+func InsertAnimeConcurrentHandler(w http.ResponseWriter, r *http.Request) {
+	perPageStr := r.URL.Query().Get("perPage")
+	if perPageStr == "" {
+		http.Error(w, "Missing perPage parameter", http.StatusBadRequest)
+		return
+	}
+
+	startPageStr := r.URL.Query().Get("startPage")
+	if startPageStr == "" {
+		http.Error(w, "Missing start page parameter", http.StatusBadRequest)
+		return
+	}
+
+	endPageStr := r.URL.Query().Get("endPage")
+	if endPageStr == "" {
+		http.Error(w, "Missing end page parameter", http.StatusBadRequest)
+		return
+	}
+
+	perPage, err := strconv.ParseInt(perPageStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Failed to parse perPage", http.StatusInternalServerError)
+		return
+	}
+
+	startPage, err := strconv.ParseInt(startPageStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Failed to parse startPage", http.StatusInternalServerError)
+		return
+	}
+
+	endPage, err := strconv.ParseInt(endPageStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Failed to parse endPage", http.StatusInternalServerError)
+		return
+	}
+
+	count, err := service.InsertAnimesConcurrent(startPage, endPage, perPage)
 	if err != nil {
 		http.Error(w, "Failed to insert animes", http.StatusInternalServerError)
 		return

@@ -34,6 +34,7 @@ func main() {
 		animeRouter.Get("/top-rated", handlers.TopRatedAnimesHandler)
 		animeRouter.Get("/graphql", handlers.GraphQLAPIHandler)
 		animeRouter.Get("/insert", handlers.InsertAnimeHandler)
+		animeRouter.Get("/insertconcurrent", handlers.InsertAnimeConcurrentHandler)
 	})
 
 	r.Mount("/v1", v1r)

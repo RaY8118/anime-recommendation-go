@@ -1,9 +1,7 @@
 package database
 
 import (
-	"anime/internal/embeddings"
 	"anime/internal/models"
-	"anime/internal/utils"
 	"context"
 	"fmt"
 	"log"
@@ -116,40 +114,4 @@ func GetTopRatedAnimes(limit int64) ([]models.AnimeResponse, error) {
 
 	return animes, nil
 
-}
-func InsertAnimes(page int64, perPage int64) (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	animes, err := utils.GraphQLAPIRequest(page, perPage)
-	if err != nil {
-		return 0, err
-	}
-
-	var animeDocs []any
-
-	for _, animeResp := range animes {
-		embeddingText := animeResp.Title.Romaji + " " + animeResp.Title.English + " " + animeResp.Description + " " + strings.Join(animeResp.Genres, " ")
-
-		embedding, err := embeddings.GenerateEmbedding(embeddingText)
-		if err != nil {
-			log.Println("embedding error:", err)
-			continue
-		}
-
-		anime := utils.ConvertResponseToAnime(animeResp, embedding)
-
-		animeDocs = append(animeDocs, anime)
-	}
-
-	if len(animeDocs) > 0 {
-		_, err = NewAnimeCollection.InsertMany(ctx, animeDocs)
-		if err != nil {
-			return 0, fmt.Errorf("insert many error: %w", err)
-		}
-		log.Printf("Successfully inserted %d anime entries\n", len(animeDocs))
-	} else {
-		log.Println("No valid anime to insert")
-	}
-	return len(animeDocs), nil
 }
