@@ -16,7 +16,7 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+		fmt.Println("Error loading .env file:", err)
 	}
 
 	database.InitMongoDB()
